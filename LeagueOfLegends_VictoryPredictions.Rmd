@@ -1,0 +1,657 @@
+---
+title: "Untitled"
+author: "Colton Behannon"
+date: "10/14/2020"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+games <- read.csv("high_diamond_ranked_10min.csv")
+
+# Check for missing data
+sum(is.na(games))
+
+# Compare the sizes of the two classes, blueWins = 0 and blueWins = 1
+sum(games$blueWins)/length(games$blueWins)
+nrow(games)
+```
+
+There is no missing data and the classes are evenly balanced with blueWins=1 taking up 49.9% (4930) of the 9879 total games. This proportion makes sense as the team that is on blue side is chosen completely arbitrarily and games are matched so that each team is of relatively equal skill level.
+
+Remove the ID and target variable (blueWins), standardize the rest of the data.
+```{r}
+ID <- games$gameId
+blueWinsVector <- games$blueWins
+
+sgames <- as.data.frame(scale(games[, -c(1,2)]))
+```
+
+1.3 Evaluate the discriminating power of a few features : Methods (see HW1)
+visually compare histograms of feature F across different classes
+use t-test or KS-test to compare histograms of F between pairs of classes
+
+### Kills Comparisons
+Comparison of kills in a win vs loss
+```{r}
+par(mfrow=c(1,2))
+hist(games$blueKills[games$blueWins==1], col="lightblue", xlab = "Kills", main = "Blue Team Kills - Win")
+abline(v=mean(games$blueKills[games$blueWins==1]), col="red", lty=2, lwd=3)
+hist(games$blueKills[games$blueWins==0], col="lightblue", xlab = "Kills", main = "Blue Team Kills - Loss")
+abline(v=mean(games$blueKills[games$blueWins==0]), col="red", lty=2, lwd=3)
+
+t.test(games$blueKills[games$blueWins==1], games$blueKills[games$blueWins==0])
+```
+
+Comparison of red team kills in a win vs loss
+```{r}
+par(mfrow=c(1,2))
+hist(games$redKills[games$blueWins==0], col="coral1", xlab = "Kills", main = "Red Team Kills - Win")
+abline(v=mean(games$redKills[games$blueWins==0]), col="red", lty=2, lwd=3)
+hist(games$redKills[games$blueWins==1], col="coral1", xlab = "Kills", main = "Red Team Kills - Loss")
+abline(v=mean(games$redKills[games$blueWins==1]), col="red", lty=2, lwd=3)
+
+t.test(games$redKills[games$blueWins==0], games$redKills[games$blueWins==1])
+```
+
+### Gold Comparison
+Comparison of blue team gold in a win vs a loss
+```{r}
+par(mfrow=c(1,2))
+hist(games$blueTotalGold[games$blueWins==1], col="lightblue", xlab = "Gold", main = "Blue Team Total Gold - Win")
+abline(v=mean(games$blueTotalGold[games$blueWins==1]), col="red", lty=2, lwd=3)
+hist(games$blueTotalGold[games$blueWins==0], col="lightblue", xlab = "Gold", main = "Blue Team Total Gold - Loss")
+abline(v=mean(games$blueTotalGold[games$blueWins==0]), col="red", lty=2, lwd=3)
+
+t.test(games$blueTotalGold[games$blueWins==1], games$blueTotalGold[games$blueWins==0])
+```
+
+Comparison of red team total gold in a win vs loss
+```{r}
+par(mfrow=c(1,2))
+hist(games$redTotalGold[games$blueWins==0], col="coral1", xlab = "Gold", main = "Red Team Total Gold - Win")
+abline(v=mean(games$redTotalGold[games$blueWins==0]), col="red", lty=2, lwd=3)
+hist(games$redTotalGold[games$blueWins==1], col="coral1", xlab = "Gold", main = "Red Team Total Gold - Loss")
+abline(v=mean(games$redTotalGold[games$blueWins==1]), col="red", lty=2, lwd=3)
+
+t.test(games$redTotalGold[games$blueWins==0], games$redTotalGold[games$blueWins==1])
+```
+
+### Wards Destroyed Comparison
+```{r}
+par(mfrow=c(1,2))
+hist(games$blueWardsPlaced[games$blueWins==1], col="lightblue", xlab = "Wards Placed", main = "Blue Team Wards Placed - Win")
+abline(v=mean(games$blueWardsPlaced[games$blueWins==1]), col="red", lty=2, lwd=3)
+hist(games$blueWardsPlaced[games$blueWins==0], col="lightblue", xlab = "Wards Placed", main = "Blue Team Wards Placed - Loss")
+abline(v=mean(games$blueWardsPlaced[games$blueWins==0]), col="red", lty=2, lwd=3)
+
+t.test(games$blueWardsPlaced[games$blueWins==1], games$blueWardsPlaced[games$blueWins==0])
+```
+
+```{r}
+par(mfrow=c(1,2))
+hist(games$redWardsPlaced[games$blueWins==0], col="coral1", xlab = "Wards Placed", main = "Red Team Wards Placed - Win")
+abline(v=mean(games$redWardsPlaced[games$blueWins==0]), col="red", lty=2, lwd=3)
+hist(games$redWardsPlaced[games$blueWins==1], col="coral1", xlab = "Wards Placed", main = "Red Team Wards Placed - Loss")
+abline(v=mean(games$redWardsPlaced[games$blueWins==1]), col="red", lty=2, lwd=3)
+
+t.test(games$redWardsPlaced[games$blueWins==0], games$redWardsPlaced[games$blueWins==1])
+
+```
+
+### Splitting into train/test
+
+```{r}
+set.seed(100)
+sgames.tr.index <- sample(1:nrow(sgames), nrow(sgames)*.8)
+sgames.test.index <- setdiff(1:nrow(sgames), sgames.tr.index)
+
+sgames.tr <- sgames[sgames.tr.index,]
+sgames.test <- sgames[sgames.test.index,]
+
+train.labels <- blueWinsVector[sgames.tr.index]
+test.labels <- blueWinsVector[sgames.test.index]
+
+sum(games[sgames.tr.index,]$blueWins)/nrow(sgames.tr)
+sum(games[sgames.test.index,]$blueWins)/nrow(sgames.test)
+```
+
+### Implement KNN
+```{r}
+library(class)
+
+# Create a function to measure the accuracy of the model
+accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
+
+error_rate.test = c()
+error_rate.train = c()
+
+# loop through k values
+k_values <- c(5,10,25,50,75,100,125,150,200,250)
+for (i in k_values){
+  knn.test <- knn(sgames.tr, sgames.test, train.labels, k=i)
+  knn.train <- knn(sgames.tr, sgames.tr, train.labels, k=i)
+  conf.mat.test <- table(knn.test, test.labels)
+  conf.mat.train <- table(knn.train, train.labels)
+  error_rate.test <- c(error_rate.test, 1 - (accuracy(conf.mat.test))/100)
+  error_rate.train <- c(error_rate.train, 1 - (accuracy(conf.mat.train))/100)
+}
+
+
+# Plot the error rates of each k
+library(ggplot2)
+library(reshape2)
+error_rate.k.test <- data.frame(k_values, error_rate.test)
+error_rate.k.train <- data.frame(k_values, error_rate.train)
+error_rate.k <- merge(error_rate.k.test, error_rate.k.train, by="k_values")
+error_rate.k_melted <- reshape2::melt(error_rate.k, id.var='k_values')
+p <- ggplot(error_rate.k_melted, aes(x=k_values, y=value, col=variable))+
+  geom_line()+
+  geom_point()+
+  scale_x_continuous(breaks = k_values, labels = k_values)+
+  labs(title="Error Rate vs k Value", y="Error Rate", x="k Value")
+
+p
+
+```
+
+
+
+```{r}
+error_rate.test = c()
+error_rate.train = c()
+
+# loop through k values
+k_values <- seq(70,80)
+for (i in k_values){
+  knn.test <- knn(sgames.tr, sgames.test, train.labels, k=i)
+  knn.train <- knn(sgames.tr, sgames.tr, train.labels, k=i)
+  conf.mat.test <- table(knn.test, test.labels)
+  conf.mat.train <- table(knn.train, train.labels)
+  error_rate.test <- c(error_rate.test, 1 - (accuracy(conf.mat.test))/100)
+  error_rate.train <- c(error_rate.train, 1 - (accuracy(conf.mat.train))/100)
+}
+
+
+# Plot the error rates of each k
+library(ggplot2)
+library(reshape2)
+error_rate.k.test <- data.frame(k_values, error_rate.test)
+error_rate.k.train <- data.frame(k_values, error_rate.train)
+error_rate.k <- merge(error_rate.k.test, error_rate.k.train, by="k_values")
+error_rate.k_melted <- reshape2::melt(error_rate.k, id.var='k_values')
+p <- ggplot(error_rate.k_melted, aes(x=k_values, y=value, col=variable))+
+  geom_line()+
+  geom_point()+
+  scale_x_continuous(breaks = k_values, labels = k_values)+
+  labs(title="Error Rate vs k Value", y="Error Rate", x="k Value")
+
+p
+```
+
+```{r}
+# accuracy of test set
+knn.test <- knn(sgames.tr, sgames.test, train.labels, k=75)
+conf.mat.test <- table(knn.test, test.labels)
+accuracy(conf.mat.test)
+
+# accuracy of train set
+knn.train <- knn(sgames.tr, sgames.tr, train.labels, k=75)
+conf.mat.train <- table(knn.train, train.labels)
+accuracy(conf.mat.train)
+
+# Confidence interval
+interval.test <- 1.96*sqrt((.7161*(1-.7161))/1976)
+interval.train <- 1.96*sqrt((.7331*(1-.7331))/7903)
+```
+
+
+```{r}
+# confusion matrix
+library('scales')
+
+blueWinsTrueNeg <- percent(conf.mat.test[1,1]/sum(conf.mat.test[,1]))
+blueWinsFalsePos <- percent(conf.mat.test[2,1]/sum(conf.mat.test[,1]))
+blueWinsFalseNeg <- percent(conf.mat.test[1,2]/sum(conf.mat.test[,2]))
+blueWinsTruePos <- percent(conf.mat.test[2,2]/sum(conf.mat.test[,2]))
+
+row1 <- c(blueWinsTrueNeg, blueWinsFalseNeg)
+row2 <- c(blueWinsFalsePos, blueWinsTruePos)
+conf.matrix.percent <- rbind(row1, row2)
+rownames(conf.matrix.percent) <- c("Pred: blueWins=0", "Pred: blueWins=1")
+colnames(conf.matrix.percent) <- c("True: blueWins=0", "True: blueWins=1")
+as.data.frame(conf.matrix.percent)
+
+blueWinsTrueNeg <- percent(conf.mat.train[1,1]/sum(conf.mat.train[,1]))
+blueWinsFalsePos <- percent(conf.mat.train[2,1]/sum(conf.mat.train[,1]))
+blueWinsFalseNeg <- percent(conf.mat.train[1,2]/sum(conf.mat.train[,2]))
+blueWinsTruePos <- percent(conf.mat.train[2,2]/sum(conf.mat.train[,2]))
+
+row1 <- c(blueWinsTrueNeg, blueWinsFalseNeg)
+row2 <- c(blueWinsFalsePos, blueWinsTruePos)
+conf.matrix.percent <- rbind(row1, row2)
+rownames(conf.matrix.percent) <- c("Pred: blueWins=0", "Pred: blueWins=1")
+colnames(conf.matrix.percent) <- c("True: blueWins=0", "True: blueWins=1")
+as.data.frame(conf.matrix.percent)
+```
+
+As seen within the confusion matrix, the KNN algorithm with k=75 correctly predicts a blue loss 73.6% of the time and accuractely predicts a blue win 69.6% of the time. The algorithm also incorrectly predicts a win 26.4% of the time and incorrectly predicts a loss 30.4% of the time.
+
+
+### Step 4 to try and improve performance
+### Correlation of sgames and addressing multicollinearity
+```{r}
+corr <- round(cor(sgames), 2)
+corr[lower.tri(corr,diag=TRUE)]=NA
+corr=as.data.frame(as.table(corr))
+corr=na.omit(corr)
+corr=corr[order(-abs(corr$Freq)),]
+
+corr
+```
+
+### Get variable correlations
+```{r}
+features_high_corr <- corr[abs(corr$Freq) > 0.75,]
+
+features_perf_corr <- corr[abs(corr$Freq) == 1.00,]
+
+features <- colnames(sgames)
+
+features_clean <- features[-c(features_high_corr$Var2)]
+
+features_no_perf <- features[-c(features_perf_corr$Var2)]
+```
+
+
+# Removed variables with correlation over 0.75 and running knn
+```{r}
+error_rate.test = c()
+error_rate.train = c()
+
+# loop k values
+k_values <- c(5,10,25,50,75,100,125,150,200,250)
+for (i in k_values){
+  knn.test <- knn(sgames.tr[features_clean], sgames.test[features_clean], train.labels, k=i)
+  knn.train <- knn(sgames.tr[features_clean], sgames.tr[features_clean], train.labels, k=i)
+  conf.mat.test <- table(knn.test, test.labels)
+  conf.mat.train <- table(knn.train, train.labels)
+  error_rate.test <- c(error_rate.test, 1 - (accuracy(conf.mat.test))/100)
+  error_rate.train <- c(error_rate.train, 1 - (accuracy(conf.mat.train))/100)
+}
+
+
+# Plot the error rates of each k
+library(ggplot2)
+library(reshape2)
+error_rate.k.test <- data.frame(k_values, error_rate.test)
+error_rate.k.train <- data.frame(k_values, error_rate.train)
+error_rate.k <- merge(error_rate.k.test, error_rate.k.train, by="k_values")
+error_rate.k_melted <- reshape2::melt(error_rate.k, id.var='k_values')
+p <- ggplot(error_rate.k_melted, aes(x=k_values, y=value, col=variable))+
+  geom_line()+
+  geom_point()+
+  scale_x_continuous(breaks = k_values, labels = k_values)+
+  labs(title="Error Rate vs k Value", y="Error Rate", x="k Value")
+
+p
+
+```
+
+
+```{r}
+error_rate.test = c()
+error_rate.train = c()
+
+# further loop k values
+k_values <- seq(147,153)
+for (i in k_values){
+  knn.test <- knn(sgames.tr[features_clean], sgames.test[features_clean], train.labels, k=i)
+  knn.train <- knn(sgames.tr[features_clean], sgames.tr[features_clean], train.labels, k=i)
+  conf.mat.test <- table(knn.test, test.labels)
+  conf.mat.train <- table(knn.train, train.labels)
+  error_rate.test <- c(error_rate.test, 1 - (accuracy(conf.mat.test))/100)
+  error_rate.train <- c(error_rate.train, 1 - (accuracy(conf.mat.train))/100)
+}
+
+
+# Plot the error rates of each k
+library(ggplot2)
+library(reshape2)
+error_rate.k.test <- data.frame(k_values, error_rate.test)
+error_rate.k.train <- data.frame(k_values, error_rate.train)
+error_rate.k <- merge(error_rate.k.test, error_rate.k.train, by="k_values")
+error_rate.k_melted <- reshape2::melt(error_rate.k, id.var='k_values')
+p <- ggplot(error_rate.k_melted, aes(x=k_values, y=value, col=variable))+
+  geom_line()+
+  geom_point()+
+  scale_x_continuous(breaks = k_values, labels = k_values)+
+  labs(title="Error Rate vs k Value", y="Error Rate", x="k Value")
+
+p
+```
+
+
+
+```{r}
+# test set accuracy
+knn.test <- knn(sgames.tr[features_clean], sgames.test[features_clean], train.labels, 150)
+conf.mat.test <- table(knn.test, test.labels)
+accuracy(conf.mat.test)
+
+# train set accuracy
+knn.train <- knn(sgames.tr[features_clean], sgames.tr[features_clean], train.labels, k=150)
+conf.mat.train <- table(knn.train, train.labels)
+accuracy(conf.mat.train)
+
+# get confidence interval radius
+interval.test <- 1.96*sqrt((.7014*(1-.7014))/1976)
+interval.train <- 1.96*sqrt((.7188*(1-.7188))/7903)
+
+
+```
+
+```{r}
+# confusion matrix
+blueWinsTrueNeg <- percent(conf.mat.test[1,1]/sum(conf.mat.test[,1]))
+blueWinsFalsePos <- percent(conf.mat.test[2,1]/sum(conf.mat.test[,1]))
+blueWinsFalseNeg <- percent(conf.mat.test[1,2]/sum(conf.mat.test[,2]))
+blueWinsTruePos <- percent(conf.mat.test[2,2]/sum(conf.mat.test[,2]))
+
+row1 <- c(blueWinsTrueNeg, blueWinsFalseNeg)
+row2 <- c(blueWinsFalsePos, blueWinsTruePos)
+conf.matrix.percent <- rbind(row1, row2)
+rownames(conf.matrix.percent) <- c("Pred: blueWins=0", "Pred: blueWins=1")
+colnames(conf.matrix.percent) <- c("True: blueWins=0", "True: blueWins=1")
+as.data.frame(conf.matrix.percent)
+
+blueWinsTrueNeg <- percent(conf.mat.train[1,1]/sum(conf.mat.train[,1]))
+blueWinsFalsePos <- percent(conf.mat.train[2,1]/sum(conf.mat.train[,1]))
+blueWinsFalseNeg <- percent(conf.mat.train[1,2]/sum(conf.mat.train[,2]))
+blueWinsTruePos <- percent(conf.mat.train[2,2]/sum(conf.mat.train[,2]))
+
+row1 <- c(blueWinsTrueNeg, blueWinsFalseNeg)
+row2 <- c(blueWinsFalsePos, blueWinsTruePos)
+conf.matrix.percent <- rbind(row1, row2)
+rownames(conf.matrix.percent) <- c("Pred: blueWins=0", "Pred: blueWins=1")
+colnames(conf.matrix.percent) <- c("True: blueWins=0", "True: blueWins=1")
+as.data.frame(conf.matrix.percent)
+```
+
+# Removed variables with perfect correlation
+```{r}
+error_rate.test = c()
+error_rate.train = c()
+
+# loop through k values
+k_values <- c(5,10,25,50,75,100,125,150,200,250)
+for (i in k_values){
+  knn.test <- knn(sgames.tr[features_no_perf], sgames.test[features_no_perf], train.labels, k=i)
+  knn.train <- knn(sgames.tr[features_no_perf], sgames.tr[features_no_perf], train.labels, k=i)
+  conf.mat.test <- table(knn.test, test.labels)
+  conf.mat.train <- table(knn.train, train.labels)
+  error_rate.test <- c(error_rate.test, 1 - (accuracy(conf.mat.test))/100)
+  error_rate.train <- c(error_rate.train, 1 - (accuracy(conf.mat.train))/100)
+}
+
+
+# Plot the error rates of each k
+library(ggplot2)
+library(reshape2)
+error_rate.k.test <- data.frame(k_values, error_rate.test)
+error_rate.k.train <- data.frame(k_values, error_rate.train)
+error_rate.k <- merge(error_rate.k.test, error_rate.k.train, by="k_values")
+error_rate.k_melted <- reshape2::melt(error_rate.k, id.var='k_values')
+p <- ggplot(error_rate.k_melted, aes(x=k_values, y=value, col=variable))+
+  geom_line()+
+  geom_point()+
+  scale_x_continuous(breaks = k_values, labels = k_values)+
+  labs(title="Error Rate vs k Value", y="Error Rate", x="k Value")
+
+p
+
+```
+
+
+```{r}
+error_rate.test = c()
+error_rate.train = c()
+
+# further loop through k values
+k_values <- seq(20,30)
+for (i in k_values){
+  knn.test <- knn(sgames.tr[features_no_perf], sgames.test[features_no_perf], train.labels, k=i)
+  knn.train <- knn(sgames.tr[features_no_perf], sgames.tr[features_no_perf], train.labels, k=i)
+  conf.mat.test <- table(knn.test, test.labels)
+  conf.mat.train <- table(knn.train, train.labels)
+  error_rate.test <- c(error_rate.test, 1 - (accuracy(conf.mat.test))/100)
+  error_rate.train <- c(error_rate.train, 1 - (accuracy(conf.mat.train))/100)
+}
+
+
+# Plot the error rates of each k
+library(ggplot2)
+library(reshape2)
+error_rate.k.test <- data.frame(k_values, error_rate.test)
+error_rate.k.train <- data.frame(k_values, error_rate.train)
+error_rate.k <- merge(error_rate.k.test, error_rate.k.train, by="k_values")
+error_rate.k_melted <- reshape2::melt(error_rate.k, id.var='k_values')
+p <- ggplot(error_rate.k_melted, aes(x=k_values, y=value, col=variable))+
+  geom_line()+
+  geom_point()+
+  scale_x_continuous(breaks = k_values, labels = k_values)+
+  labs(title="Error Rate vs k Value", y="Error Rate", x="k Value")
+
+p
+```
+
+```{r}
+# test set accuracy
+knn.test <- knn(sgames.tr[features_no_perf], sgames.test[features_no_perf], train.labels, k=25)
+conf.mat.test <- table(knn.test, test.labels)
+accuracy(conf.mat.test)
+
+# train set accuracy
+knn.train <- knn(sgames.tr[features_no_perf], sgames.tr[features_no_perf], train.labels, k=25)
+conf.mat.train <- table(knn.train, train.labels)
+accuracy(conf.mat.train)
+
+# confidence interval
+interval.test <- 1.96*sqrt((.7186*(1-.7186))/1976)
+interval.train <- 1.96*sqrt((.7383*(1-.7383))/7903)
+
+# confusion matrix
+blueWinsTrueNeg <- percent(conf.mat.test[1,1]/sum(conf.mat.test[,1]))
+blueWinsFalsePos <- percent(conf.mat.test[2,1]/sum(conf.mat.test[,1]))
+blueWinsFalseNeg <- percent(conf.mat.test[1,2]/sum(conf.mat.test[,2]))
+blueWinsTruePos <- percent(conf.mat.test[2,2]/sum(conf.mat.test[,2]))
+
+
+row1 <- c(blueWinsTrueNeg, blueWinsFalseNeg)
+row2 <- c(blueWinsFalsePos, blueWinsTruePos)
+conf.matrix.percent <- rbind(row1, row2)
+rownames(conf.matrix.percent) <- c("Pred: blueWins=0", "Pred: blueWins=1")
+colnames(conf.matrix.percent) <- c("True: blueWins=0", "True: blueWins=1")
+as.data.frame(conf.matrix.percent)
+
+blueWinsTrueNeg <- percent(conf.mat.train[1,1]/sum(conf.mat.train[,1]))
+blueWinsFalsePos <- percent(conf.mat.train[2,1]/sum(conf.mat.train[,1]))
+blueWinsFalseNeg <- percent(conf.mat.train[1,2]/sum(conf.mat.train[,2]))
+blueWinsTruePos <- percent(conf.mat.train[2,2]/sum(conf.mat.train[,2]))
+
+row1 <- c(blueWinsTrueNeg, blueWinsFalseNeg)
+row2 <- c(blueWinsFalsePos, blueWinsTruePos)
+conf.matrix.percent <- rbind(row1, row2)
+rownames(conf.matrix.percent) <- c("Pred: blueWins=0", "Pred: blueWins=1")
+colnames(conf.matrix.percent) <- c("True: blueWins=0", "True: blueWins=1")
+as.data.frame(conf.matrix.percent)
+```
+
+### PCA + KNN
+```{r}
+# PCA 
+sgames.cov <- cov(sgames[features_no_perf])
+sgames.eigen <- eigen(sgames.cov)
+phi <- sgames.eigen$vectors[,]
+phi <- -phi
+
+# Variance explained
+PVE <- sgames.eigen$values/sum(sgames.eigen$values)
+
+for (i in 1:length(features_no_perf)){
+  assign(paste("PC", i, sep = ""), as.matrix(sgames[features_no_perf]) %*% phi[,i])
+}
+
+# PC <- data.frame(PC1, PC2, PC3, PC4, PC5, PC6, PC7, PC8, PC9, PC10, PC11, PC12, PC13, PC14, PC15, PC16, PC17, PC18, PC19, PC20, PC21, PC22, PC23, PC24, PC25, PC26, PC27, PC28, PC29, PC30, PC31, PC32, PC33, PC34, PC35, PC36, PC37, PC38)
+PC <- data.frame(PC1, PC2, PC3, PC4, PC5, PC6, PC7, PC8, PC9, PC10, PC11, PC12, PC13, PC14, PC15, PC16, PC17, PC18, PC19, PC20, PC21, PC22, PC23, PC24, PC25, PC26, PC27, PC28, PC29)
+```
+
+### PVE Plot
+```{r}
+it = 0
+PVE.sum <- c()
+for (i in 1:length(PVE)){
+  PVE.sum <- sum(PVE[1:i])
+  it = it + 1
+  if (PVE.sum > .95){
+    break
+  }
+}
+
+# Cumulative PVE plot
+cumPVE <- qplot(c(1:29), cumsum(PVE)) +
+  geom_line() +
+  xlab("Principal Component") +
+  ylab(NULL) +
+  ggtitle("Cumulative PVE Plot") +
+  ylim(0,1)
+
+plot.new()
+cumPVE
+abline(h=.95, col="red")
+```
+
+```{r}
+error_rate.test = c()
+error_rate.train = c()
+
+# loop through k values
+k_values <- c(5,10,25,50,75,100,125,150,200,250)
+for (i in k_values){
+  knn.test <- knn(PC[sgames.tr.index,1:17], PC[sgames.test.index,1:17], train.labels, k=i)
+  knn.train <- knn(PC[sgames.tr.index,1:17], PC[sgames.tr.index,1:17], train.labels, k=i)
+  conf.mat.test <- table(knn.test, test.labels)
+  conf.mat.train <- table(knn.train, train.labels)
+  error_rate.test <- c(error_rate.test, 1 - (accuracy(conf.mat.test))/100)
+  error_rate.train <- c(error_rate.train, 1 - (accuracy(conf.mat.train))/100)
+}
+
+
+# Plot the error rates of each k
+library(ggplot2)
+library(reshape2)
+error_rate.k.test <- data.frame(k_values, error_rate.test)
+error_rate.k.train <- data.frame(k_values, error_rate.train)
+error_rate.k <- merge(error_rate.k.test, error_rate.k.train, by="k_values")
+error_rate.k_melted <- reshape2::melt(error_rate.k, id.var='k_values')
+p <- ggplot(error_rate.k_melted, aes(x=k_values, y=value, col=variable))+
+  geom_line()+
+  geom_point()+
+  scale_x_continuous(breaks = k_values, labels = k_values)+
+  labs(title="Error Rate vs k Value", y="Error Rate", x="k Value")
+
+p
+```
+
+```{r}
+error_rate.test = c()
+error_rate.train = c()
+
+# further loop through k values
+k_values <- seq(95,105)
+for (i in k_values){
+  knn.test <- knn(PC[sgames.tr.index,1:17], PC[sgames.test.index,1:17], train.labels, k=i)
+  knn.train <- knn(PC[sgames.tr.index,1:17], PC[sgames.tr.index,1:17], train.labels, k=i)
+  conf.mat.test <- table(knn.test, test.labels)
+  conf.mat.train <- table(knn.train, train.labels)
+  error_rate.test <- c(error_rate.test, 1 - (accuracy(conf.mat.test))/100)
+  error_rate.train <- c(error_rate.train, 1 - (accuracy(conf.mat.train))/100)
+}
+
+
+# Plot the error rates of each k
+library(ggplot2)
+library(reshape2)
+error_rate.k.test <- data.frame(k_values, error_rate.test)
+error_rate.k.train <- data.frame(k_values, error_rate.train)
+error_rate.k <- merge(error_rate.k.test, error_rate.k.train, by="k_values")
+error_rate.k_melted <- reshape2::melt(error_rate.k, id.var='k_values')
+p <- ggplot(error_rate.k_melted, aes(x=k_values, y=value, col=variable))+
+  geom_line()+
+  geom_point()+
+  scale_x_continuous(breaks = k_values, labels = k_values)+
+  labs(title="Error Rate vs k Value", y="Error Rate", x="k Value")
+
+p
+```
+
+```{r}
+# test accuracy
+knn.test <- knn(PC[sgames.tr.index,1:17], PC[sgames.test.index,1:17], train.labels, k=98)
+conf.mat.test <- table(knn.test, test.labels)
+accuracy(conf.mat.test)
+
+# train accuracy
+knn.train <- knn(PC[sgames.tr.index,1:17], PC[sgames.tr.index,1:17], train.labels, k=98)
+conf.mat.train <- table(knn.train, train.labels)
+accuracy(conf.mat.train)
+
+# confidence interval radius
+interval.test <- 1.96*sqrt((.7181*(1-.7181))/1976)
+interval.train <- 1.96*sqrt((.7307*(1-.7307))/7903)
+
+# confusion matrix
+blueWinsTrueNeg <- percent(conf.mat.test[1,1]/sum(conf.mat.test[,1]))
+blueWinsFalsePos <- percent(conf.mat.test[2,1]/sum(conf.mat.test[,1]))
+blueWinsFalseNeg <- percent(conf.mat.test[1,2]/sum(conf.mat.test[,2]))
+blueWinsTruePos <- percent(conf.mat.test[2,2]/sum(conf.mat.test[,2]))
+
+
+row1 <- c(blueWinsTrueNeg, blueWinsFalseNeg)
+row2 <- c(blueWinsFalsePos, blueWinsTruePos)
+conf.matrix.percent <- rbind(row1, row2)
+rownames(conf.matrix.percent) <- c("Pred: blueWins=0", "Pred: blueWins=1")
+colnames(conf.matrix.percent) <- c("True: blueWins=0", "True: blueWins=1")
+as.data.frame(conf.matrix.percent)
+
+blueWinsTrueNeg <- percent(conf.mat.train[1,1]/sum(conf.mat.train[,1]))
+blueWinsFalsePos <- percent(conf.mat.train[2,1]/sum(conf.mat.train[,1]))
+blueWinsFalseNeg <- percent(conf.mat.train[1,2]/sum(conf.mat.train[,2]))
+blueWinsTruePos <- percent(conf.mat.train[2,2]/sum(conf.mat.train[,2]))
+
+row1 <- c(blueWinsTrueNeg, blueWinsFalseNeg)
+row2 <- c(blueWinsFalsePos, blueWinsTruePos)
+conf.matrix.percent <- rbind(row1, row2)
+rownames(conf.matrix.percent) <- c("Pred: blueWins=0", "Pred: blueWins=1")
+colnames(conf.matrix.percent) <- c("True: blueWins=0", "True: blueWins=1")
+as.data.frame(conf.matrix.percent)
+```
+
+### Plot PCA
+```{r}
+library(ggfortify)
+
+pca_res <- prcomp(sgames[features_no_perf])
+
+autoplot(pca_res, data = games, colour = 'blueWins')
+```
+
+
+
+
